@@ -7,6 +7,10 @@ import keras
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from gRPC import stream_service_pb2 as str_pb
 from gRPC import stream_service_pb2_grpc as str_pb_grpc
+from fastapi import FastAPI, WebSocket
+import asyncio
+
+app = FastAPI()
 
 def CE_dice_loss(y_true, y_pred, lamb1=0.2, lamb2=0.8, gamma=1e-6):
     CE = tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
@@ -64,14 +68,15 @@ def filter_raw(frame, loaded_model, img_raw):
                 frame[j:j + 2, k:k + 2, :] = img_reshaped
 
     # frame = cv2.GaussianBlur(frame, (5, 5), 0)
-    cv2.imshow('frame', frame)
-
+    # cv2.imshow('frame', frame)
+    return frame
 
 
 
 print("gRPC version: " +  grpc.__version__)
 # Create a channel to connect to the gRPC server
-try:
+
+async def get_video_frames(websocket: WebSocket):
     img_raw, loaded_model = load()
     # Create a gRPC channel and stub
     channel = grpc.insecure_channel('localhost:50051')
@@ -80,8 +85,14 @@ try:
     # Create a new `GetMatRequest` message with the `status` field set to True
     request = str_pb.GetMatRequest(status=True)
 
-
     while True:
+        try:
+            # Wait for a message from the client with a timeout of 1 second
+            message = await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
+            if message == "stop":
+                break
+        except asyncio.TimeoutError:
+            pass
         # Iterate over the stream of `GetMatResponse` messages returned by the server
         for response in stub.GetMat(request):
             # Retrieve the `rows`, `cols`, and `elt_type` fields from the `OcvMat` object in the response message
@@ -98,10 +109,27 @@ try:
             mat = cv2.resize(mat, (256, 256))
 
             # Display the image in a window named "OpenCV Image"
-            filter_raw(mat, loaded_model, img_raw)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        cv2.destroyAllWindows()
+            frame = filter_raw(mat, loaded_model, img_raw)
+            yield frame
+        #     if cv2.waitKey(1) & 0xFF == ord('q'):
+        #         break
+        # cv2.destroyAllWindows()
 
-except grpc.RpcError as e:
-    print(f"Error occurred: {e}")
+
+# Handler function for the WebSocket connection
+async def video_feed(websocket: WebSocket):
+    # Send video frames to the client in a loop
+    try:
+        async for frame in get_video_frames(websocket):
+            await websocket.send_bytes(cv2.imencode('.jpg', frame)[1].tobytes())
+    except ConnectionClosedError:
+        pass
+
+# WebSocket endpoint to start the video feed
+@app.websocket("/video-feed")
+async def video_feed_endpoint(websocket: WebSocket):
+    # Accept the WebSocket connection
+    await websocket.accept()
+
+    # Start the video feed
+    await video_feed(websocket)
