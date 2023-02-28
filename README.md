@@ -6,6 +6,61 @@ This project allows you to stream video in real-time and apply machine learning 
 ## Purpose
 The purpose of this project is to create a system for live streaming video that can be filtered using machine learning. The system is designed to work with embedded devices such as Raspberry Pi, making it suitable for a variety of applications. The system captures video data from an embedded camera device, applies a machine learning filter using a trained U-Net model, and sends the filtered video data over the web using websockets. This project is aimed at anyone who wants to learn how to build a live stream video filtering system for embedded devices using machine learning techniques.
 
+## Dependencies
+The following dependencies are required to run this project:
+
+### C++
+    OpenCV library
+    Boost library
+    protobuf library
+    gRPC library
+    RE2 library
+    Abseil library
+### Python
+    FastAPI Python package
+    uvicorn Python package
+    websockets Python package
+    protobuf Python package
+    grpcio-tools Python package
+
+## Getting Started
+1. Clone the repository on your two devices: the camera device and the server.
+    ```sh
+    git clone https://github.com/aLVINlEE9/Live-Streaming-with-Real-time-Filtering-using-Machine-Learning-Model.git
+    ```
+2. On the camera device, go to the project directory and build the camera-server program.
+    ```sh
+    cd Live-Streaming-with-Real-time-Filtering-using-Machine-Learning-Model/
+    mkdir build
+    cd build
+    cmake ..
+    make
+    ```
+    Run the camera-server program.
+    ```sh
+    cd bin
+    ./camera-server
+    ```
+3. On the server, go to the project directory and build the camera-client program.
+    ```sh
+    cd Live-Streaming-with-Real-time-Filtering-using-Machine-Learning-Model/
+    mkdir build
+    cd build
+    cmake ..
+    make
+    ```
+    Run the camera-client program.
+    ```sh
+    cd bin
+    ./camera-client {serverIP} {serverPort}
+    ```
+4. On the server, go to the project directory and run the FastAPI server.
+    ```sh
+    cd Live-Streaming-with-Real-time-Filtering-using-Machine-Learning-Model/live-streaming-server/
+    uvicorn client:app --reload
+    ```
+That's it! You should now be able to view the filtered video on your web browser at [http://localhost:8000](http://localhost:8000).
+
 ## Description
 The project consists of the following components:
 
@@ -20,4 +75,3 @@ The live-streaming-server(Python script) receives the video data from the camera
 
 ### [live-streaming-client](https://github.com/aLVINlEE9/video-streaming-server/tree/main/live-streaming-client/client)
 The React client is a web application that displays the filtered video frames in real-time. The client uses websockets to receive the filtered video frames from the FastAPI server, which sends them to the React client using a socket on port 8000. 
-
